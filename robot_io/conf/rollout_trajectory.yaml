@@ -1,6 +1,7 @@
 defaults:
   - env: env
   - robot: panda_frankx_interface_policy
+  - recorder: simple_recorder
   - cams: no_cameras
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
@@ -10,7 +11,7 @@ hydra:
   run:
     dir: ${save_dir}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
-save_dir: ${save_dir}/reach_rollouts
+save_dir: tmp/reach_rollouts
 load_dir: ???
 
 use_rel_actions: False
