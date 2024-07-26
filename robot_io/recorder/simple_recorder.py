@@ -1,4 +1,5 @@
 import datetime
+import multiprocessing as mp
 from glob import glob
 import json
 import logging
@@ -48,7 +49,9 @@ class SimpleRecorder:
         self.env = env
         self.save_dir = save_dir
         self.save_images = save_images
-        self.queue = []
+        self.queue = mp.Queue()
+        self.process = mp.Process(target=self.process_queue, name="MultiprocessingStorageWorker")
+        self.process.start()
         self.save_frame_cnt = count_previous_frames()
         self.current_episode_filenames = []
         self.n_digits = n_digits
@@ -69,13 +72,16 @@ class SimpleRecorder:
         filename = os.path.join(self.save_dir, filename)
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
-        self.queue.append((filename, action, obs, rew, done, info))
+        self.queue.put((filename, action, obs, rew, done, info))
 
-    def _process_queue(self):
+    def process_queue(self):
         """
         Process function for queue.
         """
-        for msg in self.queue:
+        while True:
+            msg = self.queue.get()
+            if msg == 'QUIT':
+                break
             filename, action, obs, rew, done, info = msg
             # change datatype of depth images to save storage space
             obs = process_obs(obs)
@@ -86,21 +92,35 @@ class SimpleRecorder:
                 img_fn = filename.replace(".npz", ".jpg")
                 Image.fromarray(img).save(img_fn)
 
-    def _save_info(self):
-        info_fn = os.path.join(self.save_dir, "env_info.json")
-        env_info = self.env.get_info()
-        env_info["time"] = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    def __enter__(self):
+        """
+            with ... as ... : logic
+        Returns:
+            None
+        """
+        return self
 
-        with open(info_fn, "w") as f_obj:
-            json.dump(env_info, f_obj)
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        """
+            with ... as ... : logic
+        Returns:
+            None
+        """
+        if self.running:
+            self.queue.put("QUIT")
+            self.process.join()
 
-        self.env.camera_manager.save_calibration(self.save_dir)
 
-    def _save(self):
-        length = len(self.queue)
-        self._process_queue()
-        self._save_info()
-        print(f"saved {self.save_dir} w/ length {length}")
+    # def _save_info(self):
+    #     info_fn = os.path.join(self.save_dir, "env_info.json")
+    #     env_info = self.env.get_info()
+    #     env_info["time"] = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+    #     with open(info_fn, "w") as f_obj:
+    #         json.dump(env_info, f_obj)
+
+    #     self.env.camera_manager.save_calibration(self.save_dir)
+
 
 
 class PlaybackCamera(RobotIOCamera):
