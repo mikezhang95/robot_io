@@ -1,4 +1,5 @@
 
+import os
 import numpy as np
 import torch
 import control
@@ -55,14 +56,14 @@ def get_frame(path, i):
 
 class TrajController(object):
 
-    def __init__(self, path, (start_end_ids)):
+    def __init__(self, path, start_end_ids):
         self.start_id, self.end_id = start_end_ids
         self.frames = [get_frame(path, i) for i in range(self.start_id, self.end_id+1)]
         self.init_robot_state = self.frames[0]['robot_state'].item()
 
     def act(self, state, step=0): 
         current_frame = self.frames[step] 
-        action = frame["action"].item()
+        action = current_frame["action"].item()
         return action
 
 

@@ -49,13 +49,19 @@ class SimpleRecorder:
         self.env = env
         self.save_dir = save_dir
         self.save_images = save_images
+
+        self.ep_start_end_ids = []
+        self.save_frame_cnt = count_previous_frames()
+        self.start_id = self.save_frame_cnt
+        print(f'Current saved frames: {self.start_id}')
+
         self.queue = mp.Queue()
         self.process = mp.Process(target=self.process_queue, name="MultiprocessingStorageWorker")
         self.process.start()
-        self.save_frame_cnt = count_previous_frames()
         self.current_episode_filenames = []
         self.n_digits = n_digits
         os.makedirs(self.save_dir, exist_ok=True)
+        self.running = True
 
     def step(self, action, obs, rew, done, info):
         """
@@ -81,6 +87,7 @@ class SimpleRecorder:
         while True:
             msg = self.queue.get()
             if msg == 'QUIT':
+                self.running = False
                 break
             filename, action, obs, rew, done, info = msg
             # change datatype of depth images to save storage space
@@ -91,6 +98,11 @@ class SimpleRecorder:
                 img = obs["rgb_gripper"]
                 img_fn = filename.replace(".npz", ".jpg")
                 Image.fromarray(img).save(img_fn)
+
+            if done:
+                self.ep_start_end_ids.append([self.start_id, self.save_frame_cnt-1])
+                np.save(f"{self.save_dir}/ep_start_end_ids.npy", self.ep_start_end_ids) 
+                self.start_id = self.save_frame_cnt 
 
     def __enter__(self):
         """
