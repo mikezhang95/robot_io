@@ -3,7 +3,7 @@ import hydra
 import time
 import numpy as np
 import torch
-from robot_io.utils.utils import depth_img_from_uint16, quat_to_euler, to_relative_all_frames
+from robot_io.utils.utils import depth_img_from_uint16, quat_to_euler, euler_to_quat, to_relative_all_frames
 
 
 AGENT_TYPE = 'llmpc'
@@ -30,10 +30,23 @@ def processed_obs(obs):
     return robot_obs
 
 
-def processed_action(action):
+def processed_action(action, obs):
     """ convert np.array to dict
     """
-    target_action = {'motion': (action[:3], action[3:], 1),  'ref': 'abs'} # todo: always open gripper
+    # check large movement
+    tcp_pos = action[:3]
+    tcp_orn = action[3:-1]
+    gripper_action = action[-1]
+    tcp_orn = euler_to_quat(tcp_orn)if len(tcp_orn) == 3 else tcp_orn
+
+    # CHECK ACTIONS
+    if np.max(np.abs(tcp_pos - obs[:3])) > 0.1:
+        print('[Warning] action is clipped under relative movement of 0.1.')
+    tcp_pos = np.clip(tcp_pos - obs[:3], -0.1, 0.1) + obs[:3]
+    tcp_orn = [1, 0, 0, 0]
+    gripper_action = 1
+    obs[:3]
+    target_action = {'motion': (tcp_pos, tcp_orn, gripper_action),  'ref': 'abs'} # todo: always open gripper
     return target_action
 
 
@@ -106,7 +119,7 @@ def main(cfg):
         # === get action ===
         action = agent.act(obs, step=i)
         # processed action
-        action = processed_action(action)
+        action = processed_action(action, obs)
         # === step env ===
         next_obs, reward, done, info = env.step(action)
         # calculate reward
