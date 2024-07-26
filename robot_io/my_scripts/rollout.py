@@ -8,7 +8,7 @@ from robot_io.utils.utils import depth_img_from_uint16, quat_to_euler, euler_to_
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-AGENT_TYPE = 'traj'
+AGENT_TYPE = 'llmpc'
 EPISODE_LENGTH = 50
 TARGET_POS = np.array([0.35, 0.1, 0.2]) # test data
 # TARGET_POS = np.array([0.1942679 , 0.49881903, 0.52366607]) # blue light
@@ -73,7 +73,7 @@ def main(cfg):
         from model import LatentLinearModel 
         from agent import LLMController
         model = LatentLinearModel(nq+nv, nu,  {'hidden_dim': 10, 'dynamic_structure': 'companion', 'cost_structure': 'psd_monotonic'})
-        model_path = f'{current_dir}/runs/humanoid_stand-latent_linear2-h10_nz/model_last'
+        model_path = f'{current_dir}/runs/panda_real-latent_linear-move_test/model_last'
         model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         # model.to(device)
         print(f'Model Loaded from {model_path} to device {model.device}')
@@ -82,8 +82,8 @@ def main(cfg):
     elif AGENT_TYPE == 'il':
         from model import PolicyModel 
         from agent import ILController 
-        model = PolicyModel(nq+nv, nu, {'hidden_dim': 210})
-        model_path = f'{current_dir}/runs/humanoid_stand-policy-h210_new2/model_last'
+        model = PolicyModel(nq+nv, nu, {'hidden_dim': 150})
+        model_path = f'{current_dir}/runs/panda_real-policy-move_test/model_last'
         model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         # model.to(device)
         print(f'Model Loaded from {model_path} to device {model.device}')
