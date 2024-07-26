@@ -8,31 +8,32 @@ from robot_io.utils.utils import depth_img_from_uint16, quat_to_euler, to_relati
 
 AGENT_TYPE = 'llmpc'
 EPISODE_LENGTH = 50
-TARGET_POS = np.array([0.35, 0.1, 0.2])
+TARGET_POS = np.array([0.35, 0.1, 0.2]) # test data
+TARGET_POS = np.array([0.1942679 , 0.49881903, 0.52366607]) # blue light
 
 
 def calculate_reward(obs):
     current_pos = obs[:3]
-    cost = np.sqrt(np.sum(current_pos-TARGET_POS)**2)))
+    cost = np.sqrt(np.sum((current_pos-TARGET_POS)**2))
     return -cost
 
 def processed_obs(obs):
-    """ Convert dict to np.array
+    """ convert dict to np.array
     """
     robot_state = obs["robot_state"]
     tcp_pos = robot_state["tcp_pos"]
     tcp_orn = quat_to_euler(robot_state["tcp_orn"])
     gripper_width = robot_state["gripper_opening_width"]
     joint_positions = robot_state["joint_positions"]
-    gripper_action = 1.0 # TODO: always open gripper
+    gripper_action = 1.0 # todo: always open gripper
     robot_obs = np.concatenate([tcp_pos, tcp_orn, [gripper_width], joint_positions, [gripper_action]])
     return robot_obs
 
 
 def processed_action(action):
-    """ Convert np.array to dict
+    """ convert np.array to dict
     """
-    target_action = {'motion': (action[:3], action[3:], 1),  'ref': 'abs'} # TODO: always open gripper
+    target_action = {'motion': (action[:3], action[3:], 1),  'ref': 'abs'} # todo: always open gripper
     return target_action
 
 
@@ -72,16 +73,38 @@ def main(cfg):
         print(f'Model Loaded from {model_path} to device {model.device}')
         agent = ILController(model)
 
+    elif AGENT_TYPE == 'traj':
+        from agent import TrajController 
+        data_path = 'taco_replay'
+        start_end_ids = np.sort(np.load(os.path.join(data_path, "ep_start_end_ids.npy")), axis=0)[0]
+        agent = TrajController(data_path, start_end_ids)
+        robot_state = agent.init_robot_state
+        gripper_state = "open" if robot_state["gripper_opening_width"] > 0.07 else "closed"
+        
+        
     elif AGENT_TYPE == 'expert':
         raise 
+    
+    # reset environment
+    if AGENT_TYPE == 'traj':
+        env.reset(
+            target_pos=robot_state["tcp_pos"],
+            target_orn=robot_state["tcp_orn"],
+            gripper_state=gripper_state,
+        )
+        episode_length = start_end_ids[1] - start_end_ids[0] + 1
+    else:
+        obs = env.reset()
+        episode_length = EPISODE_LENGTH
+        
+
  
     # start to rollout! 
-    obs = env.reset()
-    for i in range(EPISODE_LENGTH):
+    for i in range(episode_length):
         # processed_obs
         obs = processed_obs(obs)
         # === get action ===
-        action = agent.act(obs)
+        action = agent.act(obs, step=i)
         # processed action
         action = processed_action(action)
         # === step env ===
