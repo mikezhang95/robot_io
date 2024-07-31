@@ -24,11 +24,14 @@ def processed_obs(obs):
     """
     robot_state = obs["robot_state"]
     tcp_pos = robot_state["tcp_pos"]
-    tcp_orn = quat_to_euler(robot_state["tcp_orn"])
+    tcp_orn = robot_state["tcp_orn"]
     gripper_width = robot_state["gripper_opening_width"]
     joint_positions = robot_state["joint_positions"]
     gripper_action = 1.0 # todo: always open gripper
-    robot_obs = np.concatenate([tcp_pos, tcp_orn, [gripper_width], joint_positions, [gripper_action]])
+
+    # M: now only save [tcp_pos, joint_positions] as state, 10-d
+    # robot_obs = np.concatenate([tcp_pos, tcp_orn, [gripper_width], joint_positions, [gripper_action]])
+    robot_obs = np.concatenate([tcp_pos, joint_positions])
     return robot_obs
 
 
@@ -39,14 +42,18 @@ def processed_action(action, obs):
         tcp_pos, tcp_orn, gripper_action = action['motion']
     else:
         tcp_pos = action[:3]
-        tcp_orn = action[3:-1]
-        gripper_action = action[-1]
-        tcp_orn = euler_to_quat(tcp_orn)if len(tcp_orn) == 3 else tcp_orn
+        # M: only use tcp_pos as action
+        # tcp_orn = action[3:-1]
+        # tcp_orn = euler_to_quat(tcp_orn)if len(tcp_orn) == 3 else tcp_orn
+        # gripper_action = action[-1]
+        tcp_orn = [1, 0, 0, 0]
+        grippoer_action = 1.0
+
 
     # TODO: CHECK ACTIONS
-    if np.max(np.abs(tcp_pos - obs[:3])) > 0.1:
+    if np.max(np.abs(tcp_pos - obs[:3])) > 0.05:
         print('[Warning] action is clipped under relative movement of 0.1.')
-    tcp_pos = np.clip(tcp_pos - obs[:3], -0.1, 0.1) + obs[:3]
+    tcp_pos = np.clip(tcp_pos - obs[:3], -0.05, 0.05) + obs[:3]
     tcp_orn = [1, 0, 0, 0]
     gripper_action = 1
     target_action = {'motion': (tcp_pos, tcp_orn, gripper_action),  'ref': 'abs'} # todo: always open gripper
