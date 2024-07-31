@@ -30,8 +30,8 @@ def processed_obs(obs):
     gripper_action = 1.0 # todo: always open gripper
 
     # M: now only save [tcp_pos, joint_positions] as state, 10-d
-    # robot_obs = np.concatenate([tcp_pos, tcp_orn, [gripper_width], joint_positions, [gripper_action]])
     robot_obs = np.concatenate([tcp_pos, joint_positions])
+    # robot_obs = np.concatenate([tcp_pos, tcp_orn, [gripper_width], joint_positions, [gripper_action]])
     return robot_obs
 
 
@@ -43,11 +43,11 @@ def processed_action(action, obs):
     else:
         tcp_pos = action[:3]
         # M: only use tcp_pos as action
+        tcp_orn = [1, 0, 0, 0]
+        grippoer_action = 1.0
         # tcp_orn = action[3:-1]
         # tcp_orn = euler_to_quat(tcp_orn)if len(tcp_orn) == 3 else tcp_orn
         # gripper_action = action[-1]
-        tcp_orn = [1, 0, 0, 0]
-        grippoer_action = 1.0
 
 
     # TODO: CHECK ACTIONS
@@ -75,7 +75,7 @@ def main(cfg):
     recorder = hydra.utils.instantiate(cfg.recorder, env=env, save_dir=cfg.save_dir)
 
     # initialize agents
-    nq, nv, nu = 15, 0, 7
+    nq, nv, nu = 10, 0, 3
     if AGENT_TYPE == 'llmpc':
         from model import LatentLinearModel 
         from agent import LLMController
@@ -84,12 +84,12 @@ def main(cfg):
         model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         # model.to(device)
         print(f'Model Loaded from {model_path} to device {model.device}')
-        agent = LLMController(model)
+        agent = LLMController(model, model_path)
 
     elif AGENT_TYPE == 'il':
         from model import PolicyModel 
         from agent import ILController 
-        model = PolicyModel(nq+nv, nu, {'hidden_dim': 150})
+        model = PolicyModel(nq+nv, nu, {'hidden_dim': 100})
         model_path = f'{current_dir}/runs/panda_real-policy-move_test/model_last'
         model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         # model.to(device)

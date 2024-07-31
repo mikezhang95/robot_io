@@ -7,12 +7,17 @@ import control
 
 class LLMController(object):
     
-    def __init__(self, model):
+    def __init__(self, model, model_path=None):
         self.model = model
         ms = model.get_lqr_matrics()
         A,B,Q,R = ms[:4]
         self.A, self.B, self.Q, self.R = A,B,Q,R
-        K, S, E = control.dlqr(A, B, Q, R)
+        try: 
+            K, S, E = control.dlqr(A, B, Q, R)
+        except:
+            print('[Warning] Solving K from A,B,Q,R fails, trying to driectly load from file.')
+            k_path = model_path.replace('model_last', 'K.npy')
+            K = np.load(k_path)
         self.K = K
         self.K_torch = torch.tensor(K.astype('float32'), device=model.device)
 
