@@ -60,7 +60,7 @@ def processed_action(action):
 
 
 # 1. load episode ids...
-ep_start_end_ids = np.load(os.path.join(dataset_dir, 'ep_start_end_ids.npy'))
+start_end_ids = np.sort(np.load(os.path.join(dataset_dir, "ep_start_end_ids.npy")), axis=-1)
 ep_start_end_ids = [[i*l, (i+1)*l-1] for i in range(100)]
 
 # 2. create dataset

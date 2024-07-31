@@ -78,6 +78,10 @@ class SimpleRecorder:
         filename = os.path.join(self.save_dir, filename)
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
+
+        info['end_id'] = self.save_frame_cnt - 1
+        info['start_id'] = self.start_id 
+        if done: self.start_id = self.save_frame_cnt
         self.queue.put((filename, action, obs, rew, done, info))
 
     def process_queue(self):
@@ -100,9 +104,8 @@ class SimpleRecorder:
                 Image.fromarray(img).save(img_fn)
 
             if done:
-                self.ep_start_end_ids.append([self.start_id, self.save_frame_cnt-1])
+                self.ep_start_end_ids.append([info['start_id'], info['end_id']])
                 np.save(f"{self.save_dir}/ep_start_end_ids.npy", self.ep_start_end_ids) 
-                self.start_id = self.save_frame_cnt 
 
     def __enter__(self):
         """
