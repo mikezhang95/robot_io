@@ -1,0 +1,20 @@
+seed: 0
+use_vr: true
+data_path: data
+save_dir: /tmp/panda_replay_reach
+record: true
+
+hydra:
+  run:
+    dir: ${save_dir}
+
+defaults:
+  - cameras: static_and_gripper
+  - vr_input: vr_input
+  - env: play_table_env
+  - scene: nothing 
+  - robot: panda_longer_finger
+  - tasks: new_playtable_tasks
+  - recorder: simple_recorder
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
